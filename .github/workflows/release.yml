@@ -1,9 +1,15 @@
 name: Release
 
-# Push a tag like v0.1.0 and this builds, signs and publishes the APK.
+# Push a tag like v0.1.0, or run it from the Actions tab with a version,
+# and this builds, signs and publishes the APK (creating the tag if needed).
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, e.g. 0.1.0"
+        required: true
 
 permissions:
   contents: write
@@ -19,9 +25,13 @@ jobs:
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Version from tag
+      - name: Version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          echo "LI_VERSION_NAME=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          V="${INPUT_VERSION:-${GITHUB_REF_NAME#v}}"
+          V="${V#v}"
+          echo "LI_VERSION_NAME=$V" >> "$GITHUB_ENV"
           echo "LI_VERSION_CODE=${{ github.run_number }}" >> "$GITHUB_ENV"
 
       - name: Restore signing key
@@ -32,6 +42,12 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
           echo "LI_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
+      - name: Refuse to publish without the real key
+        if: ${{ env.LI_KEYSTORE == '' }}
+        run: |
+          echo "::error::Signing secrets are missing. Add LI_KEYSTORE_BASE64, LI_KEYSTORE_PASSWORD, LI_KEY_ALIAS, LI_KEY_PASSWORD."
+          exit 1
+
       - name: Build release APK
         env:
           LI_KEYSTORE_PASSWORD: ${{ secrets.LI_KEYSTORE_PASSWORD }}
@@ -40,12 +56,16 @@ jobs:
         run: |
           ./gradlew :app:assembleRelease
           cp app/build/outputs/apk/release/app-release.apk LiveIsland.apk
+          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner" verify --print-certs LiveIsland.apk | grep "certificate DN"
           sha256sum LiveIsland.apk > LiveIsland.apk.sha256
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           name: Live Island ${{ env.LI_VERSION_NAME }}
+          tag_name: v${{ env.LI_VERSION_NAME }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
           files: |
             LiveIsland.apk
             LiveIsland.apk.sha256
