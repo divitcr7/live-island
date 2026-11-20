@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A black island with the lens and a lit tick rim segment. 108dp canvas, 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#000000" android:pathData="M36,43h36a11,11 0,0 1,0 22h-36a11,11 0,0 1,0 -22z" />
+    <path android:fillColor="#1C1C20" android:pathData="M54,50.5a3.5,3.5 0,1 1,0 7a3.5,3.5 0,1 1,0 -7z" />
+    <path android:strokeColor="#F2603C" android:strokeWidth="2" android:strokeLineCap="round"
+        android:pathData="M54,44.5h18a9.5,9.5 0,0 1,9.5 9.5" />
+</vector>

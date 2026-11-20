@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Live Island</string>
+    <string name="share_label">Live Island shelf</string>
+    <string name="a11y_description">Live Island draws the island around your camera, over the status bar. It uses this permission only to show its own window and to know which app is open, so it can hide in apps you choose. It does not read screen content, and nothing leaves your phone.</string>
+</resources>
