@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -116,14 +117,14 @@ fun Wave(playing: Boolean, bars: Int = 6, height: Dp = 14.dp) {
 }
 
 @Composable
-fun Btn(a: IslandAction, big: Boolean = false, filled: Boolean = a.primary, tint: Color? = null) {
+fun Btn(a: IslandAction, big: Boolean = false, filled: Boolean = a.primary, tint: Color? = null, rotate: Float = 0f) {
     val s = LocalStyle.current
     val shape: Shape = if (s.corners == Corners.TIGHT) RoundedCornerShape(10.dp) else CircleShape
     val size = if (big) 44.dp else 36.dp
     val bg = tint ?: if (filled) TextHi else Color.Transparent
     val fg = if (tint != null || filled) Color(0xFF0B0B0C) else TextHi
     Box(Modifier.size(size).clip(shape).background(bg).clickable { a.run() }, contentAlignment = Alignment.Center) {
-        a.glyph?.let { G(it, if (big) 20.dp else 18.dp, fg) }
+        a.glyph?.let { G(it, if (big) 20.dp else 18.dp, fg, Modifier.rotate(rotate)) }
     }
 }
 

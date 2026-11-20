@@ -121,11 +121,11 @@ private class RimCache {
     }
 
     fun ticks(d: DrawScope, r: Float, p: Float, color: Color) = with(d) {
-        val sw = 2.6.dp.toPx()
+        val sw = 2.4.dp.toPx()
         ensure(size.width, size.height, r, sw / 2)
-        val count = (len / 8.dp.toPx()).toInt().coerceAtLeast(12)
+        val count = (len / 9.5.dp.toPx()).toInt().coerceAtLeast(12)
         val step = len / count
-        val tick = (step * 0.13f).coerceAtLeast(1.2f)
+        val tick = (step * 0.12f).coerceAtLeast(1.2f)
         val dim = Color.White.copy(alpha = 0.14f)
         for (i in 0 until count) {
             val s = i * step

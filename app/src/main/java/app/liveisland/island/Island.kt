@@ -168,7 +168,7 @@ private fun IslandBody(
     val r by animateDpAsState(style.radius(dims.h, dims.expanded), style.spring(), label = "r")
 
     val sats = if (features.satellites && face is Face.Item && !face.expanded && !naturallyBig(primary!!))
-        IslandEngine.ordered(visible).filter { it.id != primary.id }.take(2) else emptyList()
+        IslandEngine.ordered(visible).filter { it.id != primary.id }.take(if (lens == LensSide.CENTER) 1 else 2) else emptyList()
 
     // ---- gestures ----
     val cur by rememberUpdatedState(Triple(face, primary, ui.mode))
@@ -232,10 +232,8 @@ private fun IslandBody(
             when (lens) {
                 LensSide.END -> { satRowReversed(sats, now, style, host); }
                 LensSide.CENTER -> {
-                    // mirror the right-hand satellites with space on the left so the pill stays centred on the camera
-                    val left = sats.getOrNull(1)
-                    if (left != null) { CompositionLocalProviderAccent(style.accent(left.kind, left.artAccent)) { SatelliteView(left, now, host?.let { { IslandEngine.focus(left.id) } }) }; Spacer(Modifier.width(6.dp)) }
-                    else if (sats.isNotEmpty()) Spacer(Modifier.width(satW))
+                    // balance the right-hand satellite with empty space so the pill stays centred on the camera
+                    if (sats.isNotEmpty()) Spacer(Modifier.width(satW))
                 }
                 LensSide.START -> Unit
             }

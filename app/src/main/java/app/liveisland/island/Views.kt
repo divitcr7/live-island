@@ -143,8 +143,9 @@ fun BigView(i: IslandItem, now: Long) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Avatar(i.title)
                 Column(Modifier.weight(1f)) { T(i.title, 14.sp, weight = FontWeight.SemiBold); T("Swipe up to hide", 12.sp, TextLo) }
-                i.actions.getOrNull(0)?.let { Btn(it, big = true, tint = LocalStyle.current.palette.alert) }
-                i.actions.getOrNull(1)?.let { Btn(it, big = true, tint = accent) }
+                val alert = LocalStyle.current.palette.alert
+                i.actions.getOrNull(0)?.let { Btn(it, big = true, tint = alert, rotate = 135f) }
+                i.actions.getOrNull(1)?.let { Btn(it, big = true, tint = if (accent == alert) TextHi else accent) }
             }
         }
         Kind.MESSAGE -> Card(i.subtitle.ifEmpty { "Message" }, "now") {

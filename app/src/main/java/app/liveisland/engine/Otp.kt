@@ -6,7 +6,7 @@ object Otp {
         """(otp|one[- ]time|verification|verify|passcode|security code|login code|auth(?:entication)? code|\bcode\b|pin\b|कोड|ओटीपी)""",
         RegexOption.IGNORE_CASE,
     )
-    private val code = Regex("""(?<![\d₹$.,/:-])(\d{4,8}|\d{3}[- ]\d{3})(?![\d%.,/:])""")
+    private val code = Regex("""(?<![\d₹$.,/:])(\d{3}[- ]\d{3}|\d{4,8})(?![\d%]|[.,/:]\d)""")
     private val money = Regex("""(rs\.?|inr|₹|\$|usd|eur|amount|balance|bal\b)\s*$""", RegexOption.IGNORE_CASE)
 
     fun find(text: String): String? {
