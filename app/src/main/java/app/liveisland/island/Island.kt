@@ -115,10 +115,12 @@ fun Island(
     drawLens: Boolean = false,
     onModeChange: (Mode) -> Unit = IslandEngine::setMode,
     modifier: Modifier = Modifier,
+    /** Pixel size of the island once the current transition settles (overlay window sizing). */
+    onTargetSize: ((Int, Int) -> Unit)? = null,
 ) {
     val base = LocalDensity.current
     androidx.compose.runtime.CompositionLocalProvider(LocalDensity provides Density(base.density * scale, 1f)) {
-        IslandBody(style, items, ui, facts, rest, features, lens, now, host, drawLens, onModeChange, modifier)
+        IslandBody(style, items, ui, facts, rest, features, lens, now, host, drawLens, onModeChange, modifier, onTargetSize)
     }
 }
 
@@ -126,7 +128,7 @@ fun Island(
 private fun IslandBody(
     style: IslandStyle, items: Map<String, IslandItem>, ui: IslandUi, facts: Map<Fact, FactValue>,
     rest: RestSettings, features: Features, lens: LensSide, now: Long, host: IslandHost?, drawLens: Boolean,
-    onModeChange: (Mode) -> Unit, modifier: Modifier,
+    onModeChange: (Mode) -> Unit, modifier: Modifier, onTargetSize: ((Int, Int) -> Unit)?,
 ) {
     val visible = items.filterValues { it.kind != Kind.SHELF }
     val primary = IslandEngine.primary(visible, ui)
@@ -219,6 +221,12 @@ private fun IslandBody(
 
     // ---- layout: pill + satellites, keeping the pill on the lens ----
     val satW = COMPACT_H.dp + 6.dp
+    if (onTargetSize != null) {
+        val d = LocalDensity.current
+        val totalW = dims.w + if (sats.isEmpty()) 0.dp else if (lens == LensSide.CENTER) satW * 2 else satW * sats.size
+        val px = with(d) { totalW.roundToPx() } to with(d) { dims.h.roundToPx() }
+        LaunchedEffect(px) { onTargetSize(px.first, px.second) }
+    }
     ProvideIsland(style, lens, accent) {
         Row(modifier.wrapContentSize(), verticalAlignment = Alignment.Top) {
             val satRow: @Composable (List<IslandItem>) -> Unit = { list ->

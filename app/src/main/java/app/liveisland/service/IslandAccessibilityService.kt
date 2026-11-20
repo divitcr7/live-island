@@ -25,6 +25,7 @@ import android.view.accessibility.AccessibilityEvent
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.content.FileProvider
 import androidx.lifecycle.setViewTreeLifecycleOwner
@@ -131,9 +132,8 @@ class IslandAccessibilityService : AccessibilityService(), IslandHost, SystemAct
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent { OverlayContent() }
             setOnApplyWindowInsetsListener { _, insets ->
+                // Only read status-bar visibility here. Never move the window from inside this callback.
                 if (Build.VERSION.SDK_INT >= 30) fullscreen.value = !insets.isVisible(WindowInsets.Type.statusBars())
-                lensSpot.value = Cutout.detect(this@IslandAccessibilityService, insets.displayCutout)
-                position()
                 insets
             }
             setOnDragListener(::onDrop)
@@ -144,8 +144,9 @@ class IslandAccessibilityService : AccessibilityService(), IslandHost, SystemAct
             format = PixelFormat.TRANSLUCENT
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-            width = WindowManager.LayoutParams.WRAP_CONTENT
-            height = WindowManager.LayoutParams.WRAP_CONTENT
+            val d = resources.displayMetrics.density
+            width = (200 * d).toInt()
+            height = (40 * d).toInt()
             layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= 30) WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             else WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
@@ -180,7 +181,39 @@ class IslandAccessibilityService : AccessibilityService(), IslandHost, SystemAct
 
     private fun position() {
         place()
-        view?.let { v -> runCatching { wm.updateViewLayout(v, params) } }
+        apply()
+    }
+
+    /** Pushes params to the window only when something actually changed. */
+    private var applied: List<Int> = emptyList()
+    private fun apply() {
+        val v = view ?: return
+        val now = listOf(params.x, params.y, params.width, params.height, params.gravity, params.flags)
+        if (now == applied) return
+        applied = now
+        runCatching { wm.updateViewLayout(v, params) }
+    }
+
+    /**
+     * The window is resized once per transition, not every frame: grow it before the island
+     * expands, shrink it after the island has finished collapsing. Resizing a window every frame
+     * is what made the island flicker.
+     */
+    private var shrink: kotlinx.coroutines.Job? = null
+    private fun onTargetSize(w: Int, h: Int) {
+        val pad = (8 * resources.displayMetrics.density).toInt()
+        val tw = w + pad * 2
+        val th = h + pad
+        if (tw > params.width || th > params.height) {
+            params.width = maxOf(params.width, tw); params.height = maxOf(params.height, th)
+            apply()
+        }
+        shrink?.cancel()
+        shrink = scope.launch {
+            delay(if (settings.theme == app.liveisland.core.ThemeId.CLAY) 1200 else 700)
+            params.width = tw; params.height = th
+            apply()
+        }
     }
 
     private val currentSide = MutableStateFlow(LensSide.CENTER)
@@ -193,15 +226,18 @@ class IslandAccessibilityService : AccessibilityService(), IslandHost, SystemAct
         val facts by IslandEngine.facts.collectAsState()
         val now by IslandEngine.now.collectAsState()
         val side by currentSide.collectAsState()
-        Island(
-            style = IslandStyle.of(s), items = items, ui = ui, facts = facts, rest = s.rest, features = s.features,
-            lens = side, now = now, scale = s.placement.scale, host = this,
-        )
+        val align = when (side) { LensSide.START -> androidx.compose.ui.Alignment.TopStart; LensSide.END -> androidx.compose.ui.Alignment.TopEnd; else -> androidx.compose.ui.Alignment.TopCenter }
+        androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSizeCompat(), contentAlignment = align) {
+            Island(
+                style = IslandStyle.of(s), items = items, ui = ui, facts = facts, rest = s.rest, features = s.features,
+                lens = side, now = now, scale = s.placement.scale, host = this@IslandAccessibilityService, onTargetSize = ::onTargetSize,
+            )
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        lensSpot.value = Cutout.detect(this, view?.rootWindowInsets?.displayCutout)
+        lensSpot.value = Cutout.detect(this, null)
         position()
     }
 
@@ -213,7 +249,7 @@ class IslandAccessibilityService : AccessibilityService(), IslandHost, SystemAct
         val v = view ?: return
         val f = params.flags
         params.flags = if (on) f and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv() else f or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-        if (params.flags != f) runCatching { wm.updateViewLayout(v, params) }
+        if (params.flags != f && v.isAttachedToWindow) apply()
     }
 
     override fun haptic(strong: Boolean) {
@@ -351,3 +387,5 @@ class IslandAccessibilityService : AccessibilityService(), IslandHost, SystemAct
         val running = MutableStateFlow(false)
     }
 }
+
+private fun androidx.compose.ui.Modifier.fillMaxSizeCompat() = this.fillMaxSize()

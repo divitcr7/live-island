@@ -2,9 +2,7 @@ package app.liveisland.service
 
 import android.content.Context
 import android.graphics.Rect
-import android.os.Build
 import android.view.DisplayCutout
-import android.view.WindowManager
 import app.liveisland.core.Anchor
 import app.liveisland.island.LensSide
 
@@ -24,19 +22,16 @@ data class LensSpot(val cx: Int, val cy: Int, val screenW: Int, val detected: Bo
 }
 
 object Cutout {
-    /** Reads the display cutout. Falls back to the middle of the status bar when there is none (or under-display camera). */
+    /**
+     * Reads the display cutout. Falls back to the middle of the status bar when there is none (or under-display camera).
+     * Pass [cutout] only from a full-screen window (the app's activity). The overlay must pass null:
+     * a small window's insets are relative to the window itself, which made the island chase its own tail.
+     */
     fun detect(ctx: Context, cutout: DisplayCutout?): LensSpot {
-        val wm = ctx.getSystemService(WindowManager::class.java)
-        val w: Int
-        val c: DisplayCutout?
-        if (Build.VERSION.SDK_INT >= 30) {
-            val m = wm.currentWindowMetrics
-            w = m.bounds.width()
-            c = cutout ?: m.windowInsets.displayCutout
-        } else {
-            w = ctx.resources.displayMetrics.widthPixels
-            c = cutout
-        }
+        val display = ctx.getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(android.view.Display.DEFAULT_DISPLAY)
+        val size = android.graphics.Point().also { @Suppress("DEPRECATION") display.getRealSize(it) }
+        val w = size.x
+        val c: DisplayCutout? = cutout ?: display.cutout
         val top: Rect? = c?.boundingRects?.filter { it.top <= 4 && it.width() < w * 0.6f }?.minByOrNull { it.top }
         val sbH = statusBarHeight(ctx)
         return if (top != null && !top.isEmpty) LensSpot(top.centerX(), top.centerY().coerceAtLeast(sbH / 2), w, true)
