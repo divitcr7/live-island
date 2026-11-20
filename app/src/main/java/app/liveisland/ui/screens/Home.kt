@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -96,6 +97,7 @@ fun HomeScreen(
                     ) { Icon(if (dark) Glyph.SPARK else Glyph.MOON, 16.dp) }
                 }
             }
+            item { PowerCard(s, access, update) }
             item {
                 Box(Modifier.padding(top = 18.dp)) {
                     PhoneTop(IslandStyle.of(s), showcase[i], s.placement, side, s.rest, s.features, height = 230.dp)
@@ -107,18 +109,9 @@ fun HomeScreen(
                 }
             }
 
-            if (!access.ready || !access.runtime) item {
-                Column(Modifier.padding(top = 20.dp)) {
-                    Label("Two switches and you're done")
-                    Spacer(Modifier.height(4.dp))
-                    Step(1, "Show the island", "Lets it draw over the status bar. It can't see your screen.", access.overlay) { Permissions.openOverlay(ctx) }
-                    if (!access.overlay && Build.VERSION.SDK_INT >= 33) Row(Modifier.padding(start = 40.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Txt("Switch greyed out? ", P.t.small, c.muted)
-                        Txt("Open App info → ⋮ → Allow restricted settings", P.t.small.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline), c.fg,
-                            modifier = Modifier.clickableNoRipple { Permissions.openAppInfo(ctx) })
-                    }
-                    Step(2, "Music, calls and notifications", "Read on this phone only. Nothing is stored or sent.", access.notifications) { Permissions.openNotifications(ctx) }
-                    Step(3, "Calendar, calls and earbuds", "Optional. Next meeting, answering calls, earbud battery.", access.runtime) { ask.launch(Permissions.runtime) }
+            if (access.ready && !access.runtime) item {
+                Column(Modifier.padding(top = 14.dp)) {
+                    Step(3, "Calendar, calls and earbuds", "Optional. Next meeting, answering calls, earbud battery.", false) { ask.launch(Permissions.runtime) }
                 }
             }
 
@@ -135,10 +128,6 @@ fun HomeScreen(
             }
             item {
                 Column(Modifier.padding(top = 14.dp)) {
-                    Rule()
-                    Entry("Island", if (s.enabled) "Always on screen" else "Hidden until you turn it back on", Glyph.DOT, onClick = { update { it.copy(enabled = !it.enabled) } }) {
-                        Switch(s.enabled, { on -> update { it.copy(enabled = on) } })
-                    }
                     Rule()
                     Entry("At rest", if (s.rest.mode == app.liveisland.core.RestMode.RING) "Ring around the camera" else s.rest.facts.joinToString(" · ") { it.label }, Glyph.CAL) { open(Sub.REST) }
                     Rule()
@@ -173,3 +162,70 @@ private fun countOn(s: Settings): Int = with(s.features) {
 
 fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
     this.clickable(interactionSource = MutableInteractionSource(), indication = null, onClick = onClick)
+
+
+/**
+ * The first thing on Home. Not set up: one button that walks through the two Android
+ * switches in order. Set up: a big on/off switch.
+ */
+@Composable
+private fun PowerCard(s: Settings, access: Access, update: ((Settings) -> Settings) -> Unit) {
+    val c = P.c
+    val ctx = LocalContext.current
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+    val ready = access.ready
+    val on = ready && s.enabled
+    Column(
+        Modifier.fillMaxWidth().padding(top = 16.dp).clip(shape).background(if (on || !ready) c.fg else c.surface)
+            .then(if (!on && ready) Modifier.border(1.dp, c.line, shape) else Modifier)
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        val ink = if (on || !ready) c.inv else c.fg
+        val soft = if (on || !ready) c.inv.copy(alpha = 0.65f) else c.muted
+        if (!ready) {
+            val step = if (!access.overlay) 1 else 2
+            Label("Step $step of 2", color = soft)
+            Txt("Live Island is off", P.t.title, ink)
+            Txt(
+                if (step == 1) "Tap Turn on, find Live Island in the list and switch it on. This lets it draw around your camera. It can't see your screen."
+                else "One more: allow notification access so it can show music, calls, timers and codes. Nothing leaves your phone.",
+                P.t.body, soft,
+            )
+            Box(
+                Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(c.inv)
+                    .clickableNoRipple { if (step == 1) Permissions.openOverlay(ctx) else Permissions.openNotifications(ctx) }
+                    .padding(vertical = 15.dp),
+                contentAlignment = Alignment.Center,
+            ) { Txt(if (step == 1) "Turn on" else "Allow notifications", P.t.heading, c.fg) }
+            if (step == 1 && Build.VERSION.SDK_INT >= 33) Txt(
+                "Switch greyed out? Tap here, then ⋮ → Allow restricted settings, and come back.",
+                P.t.small.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline), soft,
+                modifier = Modifier.clickableNoRipple { Permissions.openAppInfo(ctx) },
+            )
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Txt(if (on) "Island is on" else "Island is off", P.t.title, ink)
+                    Txt(if (on) "Around your camera, on every app." else "Flip the switch to bring it back.", P.t.small, soft)
+                }
+                BigSwitch(on, onInk = on) { v -> update { it.copy(enabled = v) } }
+            }
+            Txt("Tip: add the Live Island tile to Quick Settings to switch it from anywhere.", P.t.small, soft)
+        }
+    }
+}
+
+@Composable
+private fun BigSwitch(on: Boolean, onInk: Boolean, onChange: (Boolean) -> Unit) {
+    val c = P.c
+    val x by androidx.compose.animation.core.animateDpAsState(if (on) 30.dp else 3.dp, label = "k")
+    val track = if (onInk) c.inv else c.line
+    val knob = if (onInk) c.fg else c.raised
+    Box(
+        Modifier.size(64.dp, 37.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(11.dp)).background(track)
+            .clickableNoRipple { onChange(!on) },
+    ) {
+        Box(Modifier.padding(start = x, top = 3.dp).size(31.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(9.dp)).background(knob))
+    }
+}
