@@ -57,6 +57,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -78,6 +79,11 @@ class IslandAccessibilityService : AccessibilityService(), IslandHost, SystemAct
     private var privacy: PrivacySource? = null
 
     private val foreground = MutableStateFlow<String?>(null)
+    private val screenOn = MutableStateFlow(true)
+    private val shown = MutableStateFlow(true)
+    private val screenReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: android.content.Context, i: Intent) { screenOn.value = i.action == Intent.ACTION_SCREEN_ON }
+    }
     private val fullscreen = MutableStateFlow(false)
     private val lensSpot = MutableStateFlow<LensSpot?>(null)
     private var appCache: List<Pair<String, String>> = emptyList()
@@ -103,20 +109,35 @@ class IslandAccessibilityService : AccessibilityService(), IslandHost, SystemAct
 
         attach()
 
-        // one-second heartbeat for live text + expiry
+        // Screen on/off: everything parks while the screen is off.
+        val pm = getSystemService(android.os.PowerManager::class.java)
+        screenOn.value = pm.isInteractive
+        androidx.core.content.ContextCompat.registerReceiver(this, screenReceiver, android.content.IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_SCREEN_OFF)
+        }, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+        scope.launch { combine(screenOn, shown) { on, vis -> on && vis }.distinctUntilChanged().collect { IslandEngine.awake.value = it } }
+
+        // Clock for live text. Restarts whenever items, settings or awake state change, then
+        // sleeps exactly as long as the screen content allows. Zero wake-ups while asleep.
         scope.launch {
-            while (true) {
-                val now = System.currentTimeMillis()
-                IslandEngine.now.value = now
-                IslandEngine.sweep(now)
-                delay(1000 - now % 1000)
+            combine(IslandEngine.items, store.settings, IslandEngine.awake) { _, s, awake -> s to awake }.collectLatest { (s, awake) ->
+                if (!awake) return@collectLatest
+                val rest = s.rest
+                val rotate = if (rest.mode == app.liveisland.core.RestMode.FACTS && rest.facts.size > 1) rest.rotateSeconds * 1000L else null
+                val netLive = s.features.netSpeed && app.liveisland.core.Fact.NET_SPEED in rest.facts
+                while (true) {
+                    val now = System.currentTimeMillis()
+                    IslandEngine.now.value = now
+                    IslandEngine.sweep(now)
+                    delay(IslandEngine.nextTickIn(now, rotate, netLive))
+                }
             }
         }
         // show / hide + reposition whenever anything relevant changes
         scope.launch {
             combine(store.settings, foreground, fullscreen, lensSpot) { s, fg, fs, _ ->
                 s.enabled && !(s.placement.autoHideFullscreen && fs) && (fg == null || fg !in s.hideInApps)
-            }.distinctUntilChanged().collect { show -> view?.visibility = if (show) View.VISIBLE else View.GONE }
+            }.distinctUntilChanged().collect { show -> shown.value = show; view?.visibility = if (show) View.VISIBLE else View.GONE }
         }
         scope.launch { store.settings.map { it.placement }.distinctUntilChanged().collect { position() } }
         scope.launch { store.settings.map { it.pinnedNote to it.features.notes }.distinctUntilChanged().collect { (note, on) -> pinned(note, on) } }
@@ -372,6 +393,7 @@ class IslandAccessibilityService : AccessibilityService(), IslandHost, SystemAct
 
     override fun onDestroy() {
         running.value = false
+        runCatching { unregisterReceiver(screenReceiver) }
         sources.forEach { runCatching { it.stop() } }
         sources.clear()
         view?.let { runCatching { wm.removeView(it) } }

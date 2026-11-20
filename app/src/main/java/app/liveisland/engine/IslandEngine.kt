@@ -33,8 +33,27 @@ object IslandEngine {
     private val _facts = MutableStateFlow<Map<Fact, FactValue>>(emptyMap())
     val facts: StateFlow<Map<Fact, FactValue>> = _facts.asStateFlow()
 
-    /** Ticks once a second while the overlay is alive; drives countdown text. */
+    /** Wall clock for live text. Ticks only as often as what's on screen needs (see [nextTickIn]). */
     val now = MutableStateFlow(System.currentTimeMillis())
+
+    /** Screen on and island visible. Every loop in the app parks itself while this is false. */
+    val awake = MutableStateFlow(true)
+
+    /**
+     * How long until the island needs to redraw something time-based.
+     * 1 s for running clocks, the rest rotation for facts, the next expiry, else a minute.
+     */
+    fun nextTickIn(nowMs: Long, restRotateMs: Long?, liveFactsEverySecond: Boolean): Long {
+        val list = _items.value.values
+        var next = 60_000L
+        if (list.any { it.endsAt != null || it.startedAt != null || (it.kind == Kind.MEDIA && it.playing) }) next = 1_000L
+        if (liveFactsEverySecond) next = 1_000L
+        if (list.isEmpty() && restRotateMs != null) next = minOf(next, restRotateMs)
+        // clock ticks land on whole seconds so countdowns change in step with the system clock
+        val clock = next - nowMs % 1000
+        val expiry = list.mapNotNull { it.expiresAt }.minOrNull()?.let { (it - nowMs).coerceAtLeast(50) }
+        return if (expiry != null) minOf(clock, expiry) else clock
+    }
 
     /** Set by the overlay so engine-level events can buzz. */
     var haptic: ((strong: Boolean) -> Unit)? = null

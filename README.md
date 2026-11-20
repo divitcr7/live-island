@@ -132,6 +132,16 @@ Check your download: every release includes `LiveIsland.apk.sha256`.
 | **Double-tap** | Main action: play/pause, answer, copy |
 | **Share → Live Island** | Put anything on the shelf |
 
+## Battery
+
+Built to cost nothing when nothing is happening:
+
+- **Fully asleep with the screen off.** No timers, no polling, no drawing.
+- **Event-driven.** Music, calls, notifications, charging, camera/mic and Bluetooth arrive from Android; nothing is polled.
+- **Ticks only as often as needed.** Every second only while a timer, call or song is showing; every few seconds to rotate resting facts; otherwise once a minute.
+- **Cheap animation.** The waveform steps at about 8 fps and stops when music pauses. The window is resized once per transition, not every frame.
+- **No disk churn.** Settings change in memory and are saved once you stop dragging or sliding.
+
 ## Privacy
 
 - **No internet permission.** Android won't let the app send anything, anywhere. The Privacy screen checks this live.

@@ -107,11 +107,25 @@ fun Art(item: IslandItem, size: Dp) {
 @Composable
 fun Wave(playing: Boolean, bars: Int = 6, height: Dp = 14.dp) {
     val accent = LocalAccent.current
-    val t = rememberInfiniteTransition(label = "wave")
+    // Stepped at ~8 fps instead of a 60 fps animation. withFrameMillis waits for a real frame,
+    // so the loop stops by itself when the display is off. Paused music = no work at all.
+    val levels = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateListOf<Float>().apply { repeat(bars) { add(0.25f) } } }
+    androidx.compose.runtime.LaunchedEffect(playing) {
+        if (!playing) { for (i in 0 until bars) levels[i] = 0.25f; return@LaunchedEffect }
+        var phase = 0
+        while (true) {
+            kotlinx.coroutines.delay(125)
+            androidx.compose.runtime.withFrameMillis { }
+            phase++
+            for (i in 0 until bars) {
+                val x = (phase * (0.9f + i * 0.37f) + i * 1.7f)
+                levels[i] = 0.3f + 0.7f * kotlin.math.abs(kotlin.math.sin(x))
+            }
+        }
+    }
     Row(Modifier.height(height), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
         repeat(bars) { i ->
-            val f by t.animateFloat(0.25f, 1f, infiniteRepeatable(tween(420 + (i * 137) % 380), RepeatMode.Reverse), label = "b$i")
-            Box(Modifier.width(2.dp).fillMaxHeight(if (playing) f else 0.25f).clip(RoundedCornerShape(1.dp)).background(accent))
+            Box(Modifier.width(2.dp).fillMaxHeight(levels.getOrElse(i) { 0.25f }).clip(RoundedCornerShape(1.dp)).background(accent))
         }
     }
 }

@@ -27,6 +27,7 @@ import app.liveisland.engine.IslandEngine
 import app.liveisland.island.Glyph
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -222,12 +223,25 @@ class PollingFacts(private val ctx: Context, private val scope: CoroutineScope, 
 
     override fun stop() { running = false }
 
+    /** Parks (no wake-ups at all) until the screen is on, the island visible and [want] is true. */
+    private suspend fun awaitNeeded(want: () -> Boolean) {
+        while (!(IslandEngine.awake.value && want())) {
+            IslandEngine.awake.first { it }
+            if (!want()) delay(5_000) // setting is off: check again rarely, only while the screen is on
+        }
+    }
+
     private suspend fun netLoop() {
         var lastRx = TrafficStats.getTotalRxBytes(); var lastTx = TrafficStats.getTotalTxBytes()
+        val wanted = { settings().let { it.features.netSpeed && Fact.NET_SPEED in it.rest.facts } }
         while (running && scope.isActive) {
+            if (!wanted()) IslandEngine.fact(Fact.NET_SPEED, null)
+            if (!(IslandEngine.awake.value && wanted())) {
+                awaitNeeded(wanted)
+                lastRx = TrafficStats.getTotalRxBytes(); lastTx = TrafficStats.getTotalTxBytes()
+            }
             delay(1000)
             val s = settings()
-            if (!s.features.netSpeed || Fact.NET_SPEED !in s.rest.facts) { IslandEngine.fact(Fact.NET_SPEED, null); continue }
             val rx = TrafficStats.getTotalRxBytes(); val tx = TrafficStats.getTotalTxBytes()
             val down = (rx - lastRx).coerceAtLeast(0); val up = (tx - lastTx).coerceAtLeast(0)
             lastRx = rx; lastTx = tx
@@ -244,7 +258,8 @@ class PollingFacts(private val ctx: Context, private val scope: CoroutineScope, 
             val cd = if (s.features.countdowns) s.countdowns.filter { it.atEpochMs > now }.minByOrNull { it.atEpochMs } else null
             IslandEngine.fact(Fact.COUNTDOWN, cd?.let { FactValue(Glyph.FLAG, shortUntil(it.atEpochMs - now), it.title) })
             IslandEngine.fact(Fact.NOTE, s.pinnedNote?.takeIf { s.features.notes }?.let { FactValue(Glyph.PIN, "Note", it) })
-            delay(30_000)
+            delay(60_000)
+            awaitNeeded { true }
         }
     }
 
