@@ -79,7 +79,13 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-enum class Route { Home, Look, Position, Rest, Activities, Apps, Automation, Privacy }
+/** Bottom tabs. Every main area is one tap away. */
+enum class Tab(val label: String, val glyph: Glyph) {
+    HOME("Home", Glyph.ISLAND), LOOK("Look", Glyph.SPARK), ACTIVITIES("Activities", Glyph.SLIDERS), POSITION("Position", Glyph.MOVE), MORE("More", Glyph.MORE),
+}
+
+/** Pages that open on top of a tab, one level deep. */
+enum class Sub(val title: String) { REST("At rest"), APPS("Apps"), AUTOMATION("Automation"), PRIVACY("Privacy") }
 
 typealias Update = ((Settings) -> Settings) -> Unit
 
@@ -90,7 +96,7 @@ typealias Update = ((Settings) -> Settings) -> Unit
 private val lookDemos = listOf(Demo.MUSIC, Demo.MUSIC_OPEN, Demo.STACKED, Demo.TIMER, Demo.TIMER_OPEN, Demo.CALL, Demo.CHARGING, Demo.OTP, Demo.REST)
 
 @Composable
-fun LookScreen(s: Settings, side: LensSide, update: Update, back: () -> Unit) {
+fun LookScreen(s: Settings, side: LensSide, update: Update, back: (() -> Unit)? = null) {
     var demo by remember { mutableStateOf(Demo.MUSIC) }
     val style = IslandStyle.of(s)
     val o = s.overrides[s.theme] ?: StyleOverrides()
@@ -168,10 +174,10 @@ private fun ThemeCard(t: ThemeId, selected: Boolean, customised: Boolean, modifi
 // =====================================================================
 
 @Composable
-fun PositionScreen(s: Settings, side: LensSide, detected: String, update: Update, back: () -> Unit) {
+fun PositionScreen(s: Settings, side: LensSide, detected: String, update: Update, back: (() -> Unit)? = null) {
     val p = s.placement
     fun set(f: (Placement) -> Placement) = update { it.copy(placement = f(it.placement)) }
-    Page("Position & size", back, preview = {
+    Page("Position", back, preview = {
         Column {
             PhoneTop(IslandStyle.of(s), Demo.MUSIC, p, side, s.rest, s.features, height = 170.dp) { dx, dy ->
                 set { it.copy(offsetX = (it.offsetX + dx).coerceIn(-120f, 120f), offsetY = (it.offsetY + dy).coerceIn(-20f, 60f)) }
@@ -323,7 +329,7 @@ private val feats = listOf(
 )
 
 @Composable
-fun ActivitiesScreen(s: Settings, side: LensSide, dnd: Boolean, update: Update, back: () -> Unit) {
+fun ActivitiesScreen(s: Settings, side: LensSide, dnd: Boolean, update: Update, back: (() -> Unit)? = null) {
     val ctx = LocalContext.current
     var demo by remember { mutableStateOf(Demo.MUSIC) }
     Page("Activities", back, preview = {
@@ -487,6 +493,31 @@ fun PrivacyScreen(back: () -> Unit) {
             Section("Open source") {
                 Txt("Every line is public. If something here isn't true, the code will show it.", P.t.small, P.c.muted, modifier = Modifier.padding(top = 6.dp))
             }
+        }
+    }
+}
+
+// =====================================================================
+// More
+// =====================================================================
+
+@Composable
+fun MoreScreen(s: Settings, update: Update, open: (Sub) -> Unit) {
+    Page("More", null) {
+        item {
+            Choice("App appearance") {
+                Segmented(app.liveisland.core.Appearance.entries, s.appearance, { it.label }, { v -> update { it.copy(appearance = v) } })
+            }
+            Rule()
+            app.liveisland.ui.design.Entry("At rest", if (s.rest.mode == RestMode.RING) "Ring around the camera" else s.rest.facts.joinToString(" · ") { it.label }, Glyph.CAL) { open(Sub.REST) }
+            Rule()
+            app.liveisland.ui.design.Entry("Apps", "Where it shows, where it hides", Glyph.APP) { open(Sub.APPS) }
+            Rule()
+            app.liveisland.ui.design.Entry("Automation", if (s.features.plugins) "On · Tasker and scripts can post" else "Off", Glyph.PLUG) { open(Sub.AUTOMATION) }
+            Rule()
+            app.liveisland.ui.design.Entry("Privacy", "No internet permission", Glyph.SHIELD) { open(Sub.PRIVACY) }
+            Rule()
+            Txt("Live Island 0.1.0 · open source", P.t.small, P.c.dim, modifier = Modifier.padding(top = 18.dp))
         }
     }
 }

@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -62,14 +65,17 @@ private val showcase = listOf(Demo.REST, Demo.MUSIC, Demo.STACKED, Demo.CALL, De
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun HomeScreen(s: Settings, side: LensSide, access: Access, update: ((Settings) -> Settings) -> Unit, go: (Route) -> Unit, refresh: () -> Unit) {
+fun HomeScreen(
+    s: Settings, side: LensSide, access: Access, update: ((Settings) -> Settings) -> Unit,
+    open: (Sub) -> Unit, dark: Boolean, refresh: () -> Unit,
+) {
     val c = P.c
     val ctx = LocalContext.current
     var i by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { while (true) { delay(2600); i = (i + 1) % showcase.size } }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { refresh() }
 
-    Column(Modifier.fillMaxSize().background(c.bg).windowInsetsPadding(WindowInsets.safeDrawing)) {
+    Column(Modifier.fillMaxSize().background(c.bg).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -81,6 +87,13 @@ fun HomeScreen(s: Settings, side: LensSide, access: Access, update: ((Settings) 
                         when { !access.ready -> "Setup"; !s.enabled -> "Paused"; else -> "Running" },
                         access.ready && s.enabled,
                     )
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        Modifier.size(34.dp).clip(CircleShape).background(c.surface).clickableNoRipple {
+                            update { it.copy(appearance = if (dark) app.liveisland.core.Appearance.LIGHT else app.liveisland.core.Appearance.DARK) }
+                        },
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(if (dark) Glyph.SPARK else Glyph.MOON, 16.dp) }
                 }
             }
             item {
@@ -127,19 +140,9 @@ fun HomeScreen(s: Settings, side: LensSide, access: Access, update: ((Settings) 
                         Switch(s.enabled, { on -> update { it.copy(enabled = on) } })
                     }
                     Rule()
-                    Entry("Look", "${s.theme.label}${if (s.overrides[s.theme]?.isEmpty == false) " · customised" else ""}", Glyph.SPARK) { go(Route.Look) }
+                    Entry("At rest", if (s.rest.mode == app.liveisland.core.RestMode.RING) "Ring around the camera" else s.rest.facts.joinToString(" · ") { it.label }, Glyph.CAL) { open(Sub.REST) }
                     Rule()
-                    Entry("Position & size", "Camera ${side.name.lowercase()} · ${(s.placement.scale * 100).toInt()}%", Glyph.MOVE) { go(Route.Position) }
-                    Rule()
-                    Entry("At rest", if (s.rest.mode == app.liveisland.core.RestMode.RING) "Ring around the camera" else s.rest.facts.joinToString(" · ") { it.label }, Glyph.CAL) { go(Route.Rest) }
-                    Rule()
-                    Entry("Activities", "${countOn(s)} on · music, calls, OTP, timers…", Glyph.SLIDERS) { go(Route.Activities) }
-                    Rule()
-                    Entry("Apps", "Per-app rules", Glyph.APP) { go(Route.Apps) }
-                    Rule()
-                    Entry("Automation", if (s.features.plugins) "Tasker & scripts can post" else "Off", Glyph.PLUG) { go(Route.Automation) }
-                    Rule()
-                    Entry("Privacy", "No internet permission. Nothing leaves this phone.", Glyph.SHIELD) { go(Route.Privacy) }
+                    Entry("Privacy", "No internet permission. Nothing leaves this phone.", Glyph.SHIELD) { open(Sub.PRIVACY) }
                 }
             }
             item { Spacer(Modifier.height(32.dp)) }

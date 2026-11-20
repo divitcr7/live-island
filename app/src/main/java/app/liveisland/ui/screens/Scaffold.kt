@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
@@ -48,13 +52,13 @@ fun Page(
     content: LazyListScope.() -> Unit,
 ) {
     val c = P.c
-    Column(Modifier.fillMaxSize().background(c.bg).windowInsetsPadding(WindowInsets.safeDrawing)) {
-        Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 20.dp, top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxSize().background(c.bg).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
+        Row(Modifier.fillMaxWidth().padding(start = if (onBack == null) 20.dp else 12.dp, end = 20.dp, top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             if (onBack != null) Box(
                 Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).clickable(remember { MutableInteractionSource() }, null) { onBack() },
                 contentAlignment = Alignment.Center,
-            ) { Icon(Glyph.BACK, 20.dp) } else Spacer(Modifier.size(8.dp))
-            Txt(title, P.t.title, modifier = Modifier.padding(start = 4.dp))
+            ) { Icon(Glyph.BACK, 20.dp) }
+            Txt(title, P.t.title, modifier = Modifier.padding(start = if (onBack == null) 0.dp else 4.dp, top = 10.dp, bottom = 6.dp))
         }
         if (preview != null) {
             Box(Modifier.padding(horizontal = 20.dp).padding(top = 8.dp)) { preview() }
@@ -83,4 +87,34 @@ fun Card(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
         modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.surface).border(1.dp, c.line, RoundedCornerShape(16.dp)).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) { content() }
+}
+
+/** Bottom tab bar: five places, one tap each. The selected tab gets an ink capsule. */
+@Composable
+fun TabBar(selected: Tab, onSelect: (Tab) -> Unit) {
+    val c = P.c
+    Column(Modifier.fillMaxWidth().background(c.bg)) {
+        Rule()
+        Row(
+            Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars).padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+        ) {
+            Tab.entries.forEach { t ->
+                val on = t == selected
+                val pill by androidx.compose.animation.animateColorAsState(if (on) c.fg else androidx.compose.ui.graphics.Color.Transparent, label = "tab")
+                Column(
+                    Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                        .clickable(remember { MutableInteractionSource() }, null) { onSelect(t) }
+                        .padding(vertical = 2.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Box(Modifier.size(52.dp, 30.dp).clip(RoundedCornerShape(10.dp)).background(pill), contentAlignment = Alignment.Center) {
+                        Icon(t.glyph, 18.dp, if (on) c.inv else c.muted)
+                    }
+                    Txt(t.label, P.t.small.copy(fontSize = androidx.compose.ui.unit.TextUnit(11.5f, androidx.compose.ui.unit.TextUnitType.Sp), fontWeight = if (on) androidx.compose.ui.text.font.FontWeight.SemiBold else androidx.compose.ui.text.font.FontWeight.Normal), if (on) c.fg else c.muted, maxLines = 1)
+                }
+            }
+        }
+    }
 }

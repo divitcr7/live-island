@@ -35,13 +35,13 @@ class ScreensSnapshotTest {
     }
 
     private fun shot(name: String, content: @Composable () -> Unit) = paparazzi.snapshot(name) {
-        CompositionLocalProvider(LocalActivityResultRegistryOwner provides noRegistry) { PaperTheme(content) }
+        CompositionLocalProvider(LocalActivityResultRegistryOwner provides noRegistry) { PaperTheme(content = content) }
     }
 
     private val s = Settings()
 
-    @Test fun home_setup() = shot("home_setup") { HomeScreen(s, LensSide.CENTER, Access(false, false, false, false), {}, {}, {}) }
-    @Test fun home_ready() = shot("home_ready") { HomeScreen(s.copy(theme = ThemeId.CODED), LensSide.CENTER, Access(true, true, true, true), {}, {}, {}) }
+    @Test fun home_setup() = shot("home_setup") { HomeScreen(s, LensSide.CENTER, Access(false, false, false, false), {}, {}, false, {}) }
+    @Test fun home_ready() = shot("home_ready") { HomeScreen(s.copy(theme = ThemeId.CODED), LensSide.CENTER, Access(true, true, true, true), {}, {}, false, {}) }
     @Test fun look() = shot("look") { LookScreen(s, LensSide.CENTER, {}, {}) }
     @Test fun look_clay() = shot("look_clay") { LookScreen(s.copy(theme = ThemeId.CLAY), LensSide.CENTER, {}, {}) }
     @Test fun position_left() = shot("position_left") { PositionScreen(s, LensSide.START, "left", {}, {}) }

@@ -14,12 +14,29 @@ android {
         applicationId = "app.liveisland"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = (System.getenv("LI_VERSION_CODE") ?: "1").toInt()
+        versionName = System.getenv("LI_VERSION_NAME") ?: "0.1.0"
+    }
+
+    // Release signing comes from CI secrets (or your local env). Without them the release APK is
+    // signed with the debug key so it still installs; publish only properly signed builds.
+    val ks = System.getenv("LI_KEYSTORE")
+    signingConfigs {
+        create("release") {
+            if (ks != null && file(ks).exists()) {
+                storeFile = file(ks)
+                storePassword = System.getenv("LI_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("LI_KEY_ALIAS")
+                keyPassword = System.getenv("LI_KEY_PASSWORD")
+            } else {
+                initWith(getByName("debug"))
+            }
+        }
     }
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

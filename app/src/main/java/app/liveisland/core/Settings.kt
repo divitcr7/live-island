@@ -16,6 +16,7 @@ data class Settings(
     val pinnedNote: String? = null,
     val countdowns: List<Countdown> = emptyList(),
     val onboarded: Boolean = false,
+    val appearance: Appearance = Appearance.SYSTEM,
 )
 
 @Serializable
@@ -101,6 +102,8 @@ data class Features(
     val plugins: Boolean = false,
     val haptics: Haptics = Haptics.LIGHT,
 )
+
+@Serializable enum class Appearance(val label: String) { SYSTEM("System"), LIGHT("Light"), DARK("Dark") }
 
 @Serializable
 data class Countdown(val title: String, val atEpochMs: Long)

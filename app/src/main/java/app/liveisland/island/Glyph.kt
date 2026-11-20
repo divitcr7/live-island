@@ -48,6 +48,8 @@ enum class Glyph(private val d: String, private val stroke: Boolean, private val
     DOT("M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z", false),
     BELL("M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4", true),
     APP("M4 4h16v16H4z", true),
+    ISLAND("M7 8h10a4 4 0 0 1 0 8H7a4 4 0 0 1 0-8zM15 12h.01", true, 1.9f),
+    MORE("M5 12h.01M12 12h.01M19 12h.01", true, 3f),
     CHECK("M5 12.5 10 17 19 7", true, 2.2f),
     CHEVRON("M9 5l7 7-7 7", true, 2f),
     BACK("M15 5l-7 7 7 7", true, 2f),

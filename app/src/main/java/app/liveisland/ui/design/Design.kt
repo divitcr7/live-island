@@ -59,9 +59,9 @@ object P {
 }
 
 @Composable
-fun PaperTheme(content: @Composable () -> Unit) {
+fun PaperTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     CompositionLocalProvider(
-        LocalPaper provides if (isSystemInDarkTheme()) PaperDark else PaperLight,
+        LocalPaper provides if (dark) PaperDark else PaperLight,
         LocalType provides type,
         content = content,
     )
