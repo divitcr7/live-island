@@ -59,10 +59,15 @@ class BatterySource(private val ctx: Context, private val settings: () -> Settin
         val f = IntentFilter().apply {
             addAction(Intent.ACTION_POWER_CONNECTED); addAction(Intent.ACTION_POWER_DISCONNECTED); addAction(Intent.ACTION_BATTERY_CHANGED)
         }
+        // ACTION_BATTERY_CHANGED is sticky, so registering also delivers the current level at once.
         ContextCompat.registerReceiver(ctx, receiver, f, ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 
-    override fun stop() = runCatching { ctx.unregisterReceiver(receiver) }.let { }
+    override fun stop() {
+        runCatching { ctx.unregisterReceiver(receiver) }
+        IslandEngine.fact(Fact.BATTERY, null)
+        IslandEngine.remove(ID)
+    }
 
     private fun sticky() = ContextCompat.registerReceiver(ctx, null, IntentFilter(Intent.ACTION_BATTERY_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
 

@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -110,8 +111,9 @@ fun Wave(playing: Boolean, bars: Int = 6, height: Dp = 14.dp) {
     // Stepped at ~8 fps instead of a 60 fps animation. withFrameMillis waits for a real frame,
     // so the loop stops by itself when the display is off. Paused music = no work at all.
     val levels = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateListOf<Float>().apply { repeat(bars) { add(0.25f) } } }
-    androidx.compose.runtime.LaunchedEffect(playing) {
-        if (!playing) { for (i in 0 until bars) levels[i] = 0.25f; return@LaunchedEffect }
+    val still = app.liveisland.engine.IslandEngine.lowPower.collectAsStateCompat()
+    androidx.compose.runtime.LaunchedEffect(playing, still) {
+        if (!playing || still) { for (i in 0 until bars) levels[i] = 0.25f; return@LaunchedEffect }
         var phase = 0
         while (true) {
             kotlinx.coroutines.delay(125)
@@ -235,3 +237,6 @@ fun liveValue(i: IslandItem, now: Long): String = when {
     i.startedAt != null -> clock(now - i.startedAt)
     else -> i.value
 }
+
+@Composable
+private fun kotlinx.coroutines.flow.StateFlow<Boolean>.collectAsStateCompat(): Boolean = collectAsState().value

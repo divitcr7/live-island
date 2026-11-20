@@ -75,7 +75,13 @@ class IslandAccessibilityService : AccessibilityService(), IslandHost, SystemAct
     private var view: ComposeView? = null
     private val owner = OverlayLifecycleOwner()
     private val params = WindowManager.LayoutParams()
-    private val sources = mutableListOf<Source>()
+    private class Managed(val src: Source, val want: (Settings) -> Boolean) { var on = false }
+    private val managed = mutableListOf<Managed>()
+    private val powerReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: android.content.Context, i: Intent) {
+            IslandEngine.lowPower.value = c.getSystemService(android.os.PowerManager::class.java).isPowerSaveMode
+        }
+    }
     private var privacy: PrivacySource? = null
 
     private val foreground = MutableStateFlow<String?>(null)
@@ -99,13 +105,30 @@ class IslandAccessibilityService : AccessibilityService(), IslandHost, SystemAct
         IslandEngine.haptic = { strong -> haptic(strong) }
         Timers.onFocusChanged = { on -> setDnd(on) }
 
+        // Each source runs only while something that needs it is switched on. Turning a feature
+        // off unregisters its listener completely, so it costs nothing.
         privacy = PrivacySource(this, { settings }, { foreground.value })
-        sources += BatterySource(this) { settings }
-        sources += privacy!!
-        sources += BluetoothSource(this) { settings }
-        sources += PollingFacts(this, scope) { settings }
-        sources += PluginReceiver(this) { settings }
-        sources.forEach { runCatching { it.start() } }
+        managed += Managed(BatterySource(this) { settings }) { it.features.charging || app.liveisland.core.Fact.BATTERY in it.rest.facts }
+        managed += Managed(privacy!!) { it.features.privacy }
+        managed += Managed(BluetoothSource(this) { settings }) { it.features.bluetooth }
+        managed += Managed(PollingFacts(this, scope) { settings }) { it.rest.mode == app.liveisland.core.RestMode.FACTS || it.features.countdowns }
+        managed += Managed(PluginReceiver(this) { settings }) { it.features.plugins }
+        scope.launch {
+            store.settings.collect { s ->
+                val wantAny = s.enabled
+                managed.forEach { m ->
+                    val want = wantAny && m.want(s)
+                    if (want && !m.on) { runCatching { m.src.start() }; m.on = true }
+                    else if (!want && m.on) { runCatching { m.src.stop() }; m.on = false }
+                }
+            }
+        }
+
+        // Battery Saver: go still.
+        val power = getSystemService(android.os.PowerManager::class.java)
+        IslandEngine.lowPower.value = power.isPowerSaveMode
+        androidx.core.content.ContextCompat.registerReceiver(this, powerReceiver,
+            android.content.IntentFilter(android.os.PowerManager.ACTION_POWER_SAVE_MODE_CHANGED), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
 
         attach()
 
@@ -120,10 +143,10 @@ class IslandAccessibilityService : AccessibilityService(), IslandHost, SystemAct
         // Clock for live text. Restarts whenever items, settings or awake state change, then
         // sleeps exactly as long as the screen content allows. Zero wake-ups while asleep.
         scope.launch {
-            combine(IslandEngine.items, store.settings, IslandEngine.awake) { _, s, awake -> s to awake }.collectLatest { (s, awake) ->
+            combine(IslandEngine.items, store.settings, IslandEngine.awake, IslandEngine.lowPower) { _, s, awake, low -> Triple(s, awake, low) }.collectLatest { (s, awake, low) ->
                 if (!awake) return@collectLatest
                 val rest = s.rest
-                val rotate = if (rest.mode == app.liveisland.core.RestMode.FACTS && rest.facts.size > 1) rest.rotateSeconds * 1000L else null
+                val rotate = if (rest.mode == app.liveisland.core.RestMode.FACTS && rest.facts.size > 1) rest.rotateSeconds * 1000L * (if (low) 3 else 1) else null
                 val netLive = s.features.netSpeed && app.liveisland.core.Fact.NET_SPEED in rest.facts
                 while (true) {
                     val now = System.currentTimeMillis()
@@ -394,8 +417,9 @@ class IslandAccessibilityService : AccessibilityService(), IslandHost, SystemAct
     override fun onDestroy() {
         running.value = false
         runCatching { unregisterReceiver(screenReceiver) }
-        sources.forEach { runCatching { it.stop() } }
-        sources.clear()
+        runCatching { unregisterReceiver(powerReceiver) }
+        managed.filter { it.on }.forEach { runCatching { it.src.stop() } }
+        managed.clear()
         view?.let { runCatching { wm.removeView(it) } }
         view = null
         owner.destroy()

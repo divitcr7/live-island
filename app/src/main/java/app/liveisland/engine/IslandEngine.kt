@@ -39,6 +39,9 @@ object IslandEngine {
     /** Screen on and island visible. Every loop in the app parks itself while this is false. */
     val awake = MutableStateFlow(true)
 
+    /** The phone's Battery Saver is on: the island stops animating and slows its rotation. */
+    val lowPower = MutableStateFlow(false)
+
     /**
      * How long until the island needs to redraw something time-based.
      * 1 s for running clocks, the rest rotation for facts, the next expiry, else a minute.
