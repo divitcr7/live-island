@@ -1,4 +1,4 @@
-<title>Island Style Lab</title>
+<title>Live Island Designs</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,11 +31,19 @@ button{font:inherit;color:inherit}
 h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.015em;text-wrap:balance}
 .lab-k{font-family:var(--pmono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 
-header{padding-block:36px 24px;display:grid;gap:8px;max-width:720px}
-header h1{font-size:30px}
-header p{margin:0;color:var(--muted);max-width:64ch}
+header{padding-block:28px 20px;display:grid;gap:12px;border-bottom:1px solid var(--line)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 16px;font-size:15px;font-weight:500;cursor:pointer}
+.tab:hover{border-color:var(--dim)}
+.tab[aria-current="true"]{background:var(--fg);color:var(--inv);border-color:var(--fg)}
+.theme{padding-block:28px 28px;display:grid;gap:8px;max-width:760px}
+.theme h1{font-size:44px;letter-spacing:-.03em;line-height:1}
+.theme p{margin:0;color:var(--muted);font-size:16px;max-width:60ch}
+.spec{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.spec span{font-size:12.5px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted)}
+.spec span b{color:var(--fg);font-weight:500}
 
-.lab{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:40px;align-items:start;padding-bottom:64px}
+.lab{padding-bottom:64px}
 .ctl{display:grid;position:sticky;top:max(16px,env(safe-area-inset-top,0px))}
 .ax{padding-block:12px;border-top:1px solid var(--line);display:grid;gap:8px}
 .ax h2{font-size:13.5px;font-weight:600;letter-spacing:0}
@@ -53,7 +61,7 @@ header p{margin:0;color:var(--muted);max-width:64ch}
 .copied{font-family:var(--pmono);font-size:11.5px;color:var(--muted)}
 
 .main{display:grid;gap:40px;min-width:0}
-.live{display:grid;grid-template-columns:auto minmax(0,1fr);gap:32px;align-items:start}
+.live{display:grid;grid-template-columns:auto minmax(0,320px);gap:48px;align-items:start;justify-content:start}
 .states{display:grid;gap:6px;align-content:start}
 .states .opt{justify-content:space-between;width:100%;border-radius:8px;padding:8px 12px}
 .states .opt small{font-family:var(--pmono);font-size:11px;opacity:.6}
@@ -94,7 +102,7 @@ header p{margin:0;color:var(--muted);max-width:64ch}
 .ctx-home .app-h,.ctx-home .srch,.ctx-home .msg{display:none}
 .scr:not(.ctx-home) .home{display:none}
 
-.sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:28px 22px}
+.sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:28px 22px}
 .tile{display:grid;gap:10px;margin:0;min-width:0;align-content:start}
 .tile figcaption{display:grid;gap:2px}
 .tile figcaption b{font-size:13.5px;font-weight:600}
@@ -168,28 +176,22 @@ header p{margin:0;color:var(--muted);max-width:64ch}
 
 footer{padding-block:24px 48px;border-top:1px solid var(--line);color:var(--muted);font-family:var(--pmono);font-size:11.5px}
 
-@media (max-width:1180px){ .live{grid-template-columns:minmax(0,1fr)} .states{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))} }
+@media (max-width:860px){ .live{grid-template-columns:minmax(0,1fr)} .states{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))} .theme h1{font-size:34px} }
 @media (max-width:860px){ .lab{grid-template-columns:minmax(0,1fr)} .ctl{position:static} }
 @media (prefers-reduced-motion:reduce){ .wave i{animation:none;height:60%} .view,.tk{transition:none} }
 </style>
 
 <div class="wrap">
   <header>
-    <span class="lab-k">Live Island · style lab · round 2</span>
-    <h1>Pick the look</h1>
-    <p>Each island is shown at real size inside a real phone top: camera hole, status bar, and an app underneath. Change a choice on the left and everything updates. When you're happy, copy your picks and paste them back.</p>
+    <span class="lab-k">Live Island · designs</span>
+    <nav class="tabs" id="tabs" aria-label="Designs"></nav>
   </header>
-
+  <div class="theme">
+    <h1 id="tName"></h1>
+    <p id="tDesc"></p>
+    <div class="spec" id="tSpec"></div>
+  </div>
   <div class="lab">
-    <aside class="ctl" id="ctl">
-      <div class="ax"><h2>Starting point</h2><div class="opts" id="presets"></div></div>
-      <div class="summary">
-        <span class="lab-k">Your picks</span>
-        <pre id="sum"></pre>
-        <div class="brow"><button class="btn" id="copy" type="button">Copy picks</button><span class="copied" id="copied" aria-live="polite"></span></div>
-      </div>
-    </aside>
-
     <div class="main">
       <div class="live">
         <div class="fit" id="fitLive" data-w="408"><div class="ph full"><div class="scr" id="liveScr">
@@ -204,13 +206,13 @@ footer{padding-block:24px 48px;border-top:1px solid var(--line);color:var(--mute
       </div>
 
       <div>
-        <div style="display:grid;gap:4px;margin-bottom:16px"><span class="lab-k">Every state, in place</span><h2 style="font-size:20px">How each one sits around the camera</h2></div>
+        <div style="display:grid;gap:4px;margin-bottom:16px"><span class="lab-k">Every state in this design</span></div>
         <div class="sheet" id="sheet"></div>
       </div>
     </div>
   </div>
 </div>
-<footer><div class="wrap">Live Island · style lab round 2 · browser approximation. On device this is Compose with real springs.</div></footer>
+<footer><div class="wrap">Live Island designs · browser mock-up of the Android app</div></footer>
 
 <script>
 (() => {
@@ -258,9 +260,15 @@ const PRESETS=[
  ['Instrument',{pal:'signal',rim:'ticks',shape:'tight',body:'ink',type:'mono',motion:'snappy',rest:'glance'}],
  ['Clay',{pal:'clay',rim:'fill',shape:'round',body:'tint',type:'rounded',motion:'liquid',rest:'glance'}],
 ];
+const THEMES=[
+ ['signal','Signal','Black and off-white. Orange shows up only for things that need you now, like calls and alarms. Progress is shown as tick marks around the edge.',{pal:'signal',rim:'ticks',shape:'round',body:'ink',type:'technical',motion:'snappy',rest:'dense'}],
+ ['quiet','Quiet','The calmest one. No colour at all, a faint outline, and just a ring around the camera when nothing is happening.',{pal:'mono',rim:'line',shape:'round',body:'hairline',type:'technical',motion:'snappy',rest:'minimal'}],
+ ['coded','Coded','Each activity has a muted colour of its own (music, timer, maps, calls), traced by a thin line around the edge.',{pal:'coded',rim:'line',shape:'soft',body:'ink',type:'technical',motion:'bouncy',rest:'dense'}],
+ ['instrument','Instrument','Monospace type everywhere, tight corners and tick marks. Reads like a dashboard gauge.',{pal:'signal',rim:'ticks',shape:'tight',body:'ink',type:'mono',motion:'snappy',rest:'glance'}],
+ ['clay','Clay','Soft earth tones, rounded type and slow movement. The background fills with colour instead of a line.',{pal:'clay',rim:'fill',shape:'round',body:'tint',type:'rounded',motion:'liquid',rest:'glance'}],
+];
 const CTX=[['light','Light app'],['dark','Dark app'],['home','Home screen']];
-let P={...PRESETS[0][1]}, ctx='light';
-try{const s=JSON.parse(localStorage.getItem('li-lab2')||'null'); if(s){AX.forEach(a=>{if(s[a.k]&&a.opts.some(o=>o[0]===s[a.k]))P[a.k]=s[a.k]}); if(CTX.some(c=>c[0]===s.ctx))ctx=s.ctx;}}catch(e){}
+let T=THEMES[0], P={...T[3]}, ctx='light';
 
 /* ---------- data ---------- */
 const D={timer:{left:168,total:180},music:{pos:72,len:208},nav:{p:.62},charge:{p:.86}};
@@ -364,39 +372,29 @@ let si=0,seqT,auto=true;
 function runSeq(){clearTimeout(seqT);if(!auto)return;const [k,ms]=SEQ[si%SEQ.length];showLive(k);si++;seqT=setTimeout(runSeq,ms);}
 
 /* ---------- controls ---------- */
-const ctl=document.getElementById('ctl'), sumBox=ctl.querySelector('.summary');
-AX.forEach(a=>{const box=document.createElement('div');box.className='ax';
-  box.innerHTML=`<h2>${a.name}</h2><div class="opts" role="group" aria-label="${a.name}">${a.opts.map(o=>`<button type="button" class="opt" data-ax="${a.k}" data-v="${o[0]}" aria-pressed="false">${o[3]?`<span class="d">${o[3].map(c=>`<i style="background:${c}"></i>`).join('')}</span>`:''}${o[1]}</button>`).join('')}</div><p class="note" id="d-${a.k}"></p>`;
-  ctl.insertBefore(box,sumBox);});
-document.getElementById('presets').innerHTML=PRESETS.map(([n],i)=>`<button type="button" class="opt" data-pre="${i}" aria-pressed="false">${n}</button>`).join('');
+document.getElementById('tabs').innerHTML=THEMES.map(t=>`<button type="button" class="tab" data-theme-k="${t[0]}">${t[1]}</button>`).join('');
 document.getElementById('ctxopts').innerHTML=CTX.map(([k,l])=>`<button type="button" class="opt" data-ctx="${k}" aria-pressed="false">${l}</button>`).join('');
 const STL=[['rest','At rest'],['music','Music'],['musicX','Music, open'],['timer','Timer'],['nav','Navigation'],['call','Incoming call'],['charge','Charging']];
 document.getElementById('states').innerHTML=`<button type="button" class="opt" data-auto aria-pressed="true">Play through all <small>auto</small></button>`+STL.map(([k,l])=>`<button type="button" class="opt" data-state="${k}" aria-pressed="false">${l}</button>`).join('');
 
 function apply(rebuild=true){
-  AX.forEach(a=>{root.dataset[a.k]=P[a.k];
-    document.querySelectorAll(`[data-ax="${a.k}"]`).forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===P[a.k])));
-    document.getElementById('d-'+a.k).textContent=a.opts.find(x=>x[0]===P[a.k])[2];});
+  AX.forEach(a=>{root.dataset[a.k]=P[a.k];});
   liveScr.className='scr ctx-'+ctx;
   document.querySelectorAll('[data-ctx]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.ctx===ctx)));
-  document.querySelectorAll('[data-pre]').forEach(b=>{const p=PRESETS[b.dataset.pre][1];b.setAttribute('aria-pressed',String(AX.every(a=>p[a.k]===P[a.k])))});
+  document.querySelectorAll('[data-theme-k]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.themeK===T[0])));
+  document.getElementById('tName').textContent=T[1];
+  document.getElementById('tDesc').textContent=T[2];
+  document.getElementById('tSpec').innerHTML=AX.map(a=>`<span>${a.name}: <b>${a.opts.find(o=>o[0]===P[a.k])[1]}</b></span>`).join('');
   if(rebuild){renderSheet();buildLive();}
   tickUI();
-  const pre=PRESETS.find(([,p])=>AX.every(a=>p[a.k]===P[a.k]));
-  document.getElementById('sum').textContent=`Live Island style${pre?` (preset: ${pre[0]})`:' (custom)'}\n`+AX.map(a=>`${a.name}: ${a.opts.find(o=>o[0]===P[a.k])[1]}`).join('\n');
-  try{localStorage.setItem('li-lab2',JSON.stringify({...P,ctx}))}catch(e){}
 }
+function pickTheme(k){ const t=THEMES.find(x=>x[0]===k); if(!t) return; T=t; P={...t[3]}; apply(); si=0; if(auto) runSeq(); }
+window.addEventListener('hashchange',()=>pickTheme(location.hash.slice(1)));
 document.addEventListener('click',e=>{
-  const o=e.target.closest('[data-ax]');if(o){P[o.dataset.ax]=o.dataset.v;apply(['rest','shape','rim'].includes(o.dataset.ax));return;}
-  const pr=e.target.closest('[data-pre]');if(pr){P={...PRESETS[pr.dataset.pre][1]};apply();return;}
+  const t=e.target.closest('[data-theme-k]');if(t){ try{history.replaceState(null,'','#'+t.dataset.themeK)}catch(err){} pickTheme(t.dataset.themeK);return;}
   const c=e.target.closest('[data-ctx]');if(c){ctx=c.dataset.ctx;apply(true);return;}
   const st=e.target.closest('[data-state]');if(st){auto=false;clearTimeout(seqT);document.querySelector('[data-auto]').setAttribute('aria-pressed','false');showLive(st.dataset.state);return;}
   if(e.target.closest('[data-auto]')){auto=true;document.querySelector('[data-auto]').setAttribute('aria-pressed','true');si=0;runSeq();}
-});
-document.getElementById('copy').addEventListener('click',()=>{
-  const pre=document.getElementById('sum'),msg=document.getElementById('copied');
-  const sel=()=>{const r=document.createRange();r.selectNodeContents(pre);const s=getSelection();s.removeAllRanges();s.addRange(r);msg.textContent='Text selected, copy it manually';};
-  try{navigator.clipboard.writeText(pre.textContent).then(()=>{msg.textContent='Copied';setTimeout(()=>msg.textContent='',2200)}).catch(sel)}catch(err){sel()}
 });
 
 /* ---------- clock ---------- */
@@ -411,6 +409,7 @@ setInterval(()=>{D.timer.left=D.timer.left<=0?D.timer.total:D.timer.left-1;D.mus
 let ti=0;setInterval(()=>{ti=(ti+1)%3;root.style.setProperty('--ti',ti)},3400);
 
 const fl=document.getElementById('fitLive'); fit(fl); ro.observe(fl);
+{const h=location.hash.slice(1); const t=THEMES.find(x=>x[0]===h); if(t){T=t;P={...t[3]};}}
 apply(); runSeq();
 })();
 </script>
